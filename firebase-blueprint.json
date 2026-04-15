@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores teacher and admin profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "fullName": { "type": "string" },
+        "employeeNumber": { "type": "string" },
+        "position": { "type": "string", "enum": ["Teacher", "Master Teacher I", "School Principal I", "Administrative Officer II", "Admin Aide"] },
+        "isAdviser": { "type": "boolean" },
+        "advisoryClass": { "type": "string" },
+        "assignedClasses": { "type": "array", "items": { "type": "string" } },
+        "assignedSubjects": { "type": "object" },
+        "role": { "type": "string", "enum": ["admin", "teacher"] }
+      },
+      "required": ["uid", "email", "fullName", "employeeNumber", "position", "role"]
+    },
+    "Assessment": {
+      "title": "Assessment Record",
+      "description": "Stores anonymized assessment scores (CRLA, Phil-IRI, RMA, ELAK).",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "type": { "type": "string", "enum": ["CRLA", "Phil-IRI", "RMA", "ELAK"] },
+        "period": { "type": "string", "enum": ["BOSY", "MOSY", "EOSY"] },
+        "score": { "type": "number" },
+        "subject": { "type": "string" },
+        "grade": { "type": "string" },
+        "section": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "type", "period", "score", "grade", "section", "teacherId"]
+    },
+    "AcademicRecord": {
+      "title": "Academic Record",
+      "description": "Stores anonymized academic grades and skills data.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "term": { "type": "string", "enum": ["Term 1", "Term 2", "Term 3"] },
+        "subject": { "type": "string" },
+        "gradeValue": { "type": "number" },
+        "masteredSkills": { "type": "array", "items": { "type": "string" } },
+        "leastMasteredSkills": { "type": "array", "items": { "type": "string" } },
+        "grade": { "type": "string" },
+        "section": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "term", "subject", "gradeValue", "grade", "section", "teacherId"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "User profiles indexed by UID."
+    },
+    "/assessments/{assessmentId}": {
+      "schema": "Assessment",
+      "description": "Assessment records."
+    },
+    "/academic_records/{recordId}": {
+      "schema": "AcademicRecord",
+      "description": "Academic records."
+    }
+  }
+}

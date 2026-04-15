@@ -1,0 +1,133 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - fullName: string (required)
+    //   - employeeNumber: string (required)
+    //   - position: string (required, enum)
+    //   - isAdviser: bool
+    //   - advisoryClass: string
+    //   - assignedClasses: list
+    //   - assignedSubjects: map
+    //   - role: string (required, 'admin' or 'teacher')
+    //
+    // Collection: assessments
+    // Fields:
+    //   - studentId: string (required, anonymized)
+    //   - type: string (required, enum)
+    //   - period: string (required, enum)
+    //   - score: number (required)
+    //   - grade: string (required)
+    //   - section: string (required)
+    //   - teacherId: string (required)
+    //   - timestamp: timestamp
+    //
+    // Collection: academic_records
+    // Fields:
+    //   - studentId: string (required, anonymized)
+    //   - term: string (required, enum)
+    //   - subject: string (required)
+    //   - gradeValue: number (required)
+    //   - masteredSkills: list
+    //   - leastMasteredSkills: list
+    //   - grade: string (required)
+    //   - section: string (required)
+    //   - teacherId: string (required)
+    //   - timestamp: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "joshuaclaro906@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Domain Validators
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'fullName', 'employeeNumber', 'position', 'role']) &&
+             data.uid is string &&
+             data.email is string && isValidEmail(data.email) &&
+             data.fullName is string && data.fullName.size() < 100 &&
+             data.employeeNumber is string && data.employeeNumber.size() < 20 &&
+             data.position in ['Teacher', 'Master Teacher I', 'School Principal I', 'Administrative Officer II', 'Admin Aide'] &&
+             data.role in ['admin', 'teacher'];
+    }
+
+    function isValidAssessment(data) {
+      return data.keys().hasAll(['studentId', 'type', 'period', 'score', 'grade', 'section', 'teacherId']) &&
+             data.studentId is string && data.studentId.size() < 50 &&
+             data.type in ['CRLA', 'Phil-IRI', 'RMA', 'ELAK'] &&
+             data.period in ['BOSY', 'MOSY', 'EOSY'] &&
+             data.score is number &&
+             data.grade is string &&
+             data.section is string &&
+             data.teacherId is string;
+    }
+
+    function isValidAcademicRecord(data) {
+      return data.keys().hasAll(['studentId', 'term', 'subject', 'gradeValue', 'grade', 'section', 'teacherId']) &&
+             data.studentId is string && data.studentId.size() < 50 &&
+             data.term in ['Term 1', 'Term 2', 'Term 3'] &&
+             data.subject is string &&
+             data.gradeValue is number &&
+             data.grade is string &&
+             data.section is string &&
+             data.teacherId is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isOwner(userId) || isAdmin()) &&
+                    (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /assessments/{assessmentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidAssessment(request.resource.data);
+      allow update: if isAuthenticated() && isValidAssessment(request.resource.data) && 
+                    (request.resource.data.teacherId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.teacherId == request.auth.uid || isAdmin());
+    }
+
+    match /academic_records/{recordId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidAcademicRecord(request.resource.data);
+      allow update: if isAuthenticated() && isValidAcademicRecord(request.resource.data) && 
+                    (request.resource.data.teacherId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.teacherId == request.auth.uid || isAdmin());
+    }
+  }
+}
