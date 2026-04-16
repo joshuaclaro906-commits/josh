@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { google } from 'googleapis';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,12 +21,9 @@ async function startServer() {
   });
 
   // Google Drive Integration (Placeholder)
-  // In a real app, you'd handle OAuth2 flow here
   app.post('/api/drive/upload', async (req, res) => {
     try {
       const { fileName, content, folderPath } = req.body;
-      // This would use googleapis to upload to clarojosh@gmail.com
-      // For now, we'll just log it
       console.log(`Uploading ${fileName} to Drive at ${folderPath}`);
       res.json({ success: true, message: 'File uploaded to Drive (mock)' });
     } catch (error) {
@@ -41,12 +39,15 @@ async function startServer() {
     });
     app.use(vite.middlewares);
     
-    // Explicit SPA fallback for development if vite middleware doesn't catch it
+    // Explicit SPA fallback for development
     app.get('*', async (req, res, next) => {
-      if (req.url.startsWith('/api')) return next();
+      const url = req.originalUrl;
+      if (url.startsWith('/api')) return next();
+      
       try {
-        const html = await vite.transformIndexHtml(req.url, 'index.html');
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+        let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
       } catch (e) {
         vite.ssrFixStacktrace(e as Error);
         next(e);
