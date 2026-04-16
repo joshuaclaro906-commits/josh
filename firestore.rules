@@ -1,7 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
     // ===============================================================
     // Assumed Data Model
     // ===============================================================
@@ -9,40 +8,42 @@ service cloud.firestore {
     // Collection: users
     // Document ID: {uid}
     // Fields:
-    //   - uid: string (required)
-    //   - email: string (required, email format)
-    //   - fullName: string (required)
-    //   - employeeNumber: string (required)
-    //   - position: string (required, enum)
-    //   - isAdviser: bool
-    //   - advisoryClass: string
-    //   - assignedClasses: list
-    //   - assignedSubjects: map
-    //   - role: string (required, 'admin' or 'teacher')
+    //   - uid: string (required) - User's Firebase Auth UID
+    //   - email: string (required, email format) - User's email address
+    //   - fullName: string (required) - User's full name
+    //   - employeeNumber: string (required) - DepEd employee number
+    //   - position: string (required, enum) - Job position
+    //   - isAdviser: bool (required) - Whether the user is a class adviser
+    //   - advisoryClass: string (optional) - The class they advise
+    //   - assignedClasses: list (required) - Classes they teach
+    //   - assignedSubjects: map (required) - Subjects per class
+    //   - role: string (required, enum: ['admin', 'teacher']) - System role
     //
     // Collection: assessments
+    // Document ID: {assessmentId}
     // Fields:
-    //   - studentId: string (required, anonymized)
-    //   - type: string (required, enum)
-    //   - period: string (required, enum)
+    //   - studentId: string (required) - Anonymized student ID
+    //   - type: string (required, enum: ['CRLA', 'Phil-IRI', 'RMA', 'ELAK'])
+    //   - period: string (required, enum: ['BOSY', 'MOSY', 'EOSY'])
     //   - score: number (required)
     //   - grade: string (required)
     //   - section: string (required)
-    //   - teacherId: string (required)
-    //   - timestamp: timestamp
+    //   - teacherId: string (required) - UID of the teacher who uploaded
+    //   - timestamp: string (required, date-time)
     //
     // Collection: academic_records
+    // Document ID: {recordId}
     // Fields:
-    //   - studentId: string (required, anonymized)
-    //   - term: string (required, enum)
+    //   - studentId: string (required) - Anonymized student ID
+    //   - term: string (required, enum: ['Term 1', 'Term 2', 'Term 3'])
     //   - subject: string (required)
     //   - gradeValue: number (required)
-    //   - masteredSkills: list
-    //   - leastMasteredSkills: list
+    //   - masteredSkills: list (required)
+    //   - leastMasteredSkills: list (required)
     //   - grade: string (required)
     //   - section: string (required)
-    //   - teacherId: string (required)
-    //   - timestamp: timestamp
+    //   - teacherId: string (required) - UID of the teacher who uploaded
+    //   - timestamp: string (required, date-time)
     //
     // ===============================================================
 
@@ -53,11 +54,11 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
-    
+
     function isAdmin() {
       return isAuthenticated() && 
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
@@ -68,37 +69,52 @@ service cloud.firestore {
       return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
     }
 
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function hasOnlyAllowedFields(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+
+    // ===============================================================
     // Domain Validators
+    // ===============================================================
+
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email', 'fullName', 'employeeNumber', 'position', 'role']) &&
-             data.uid is string &&
+      return data.uid is string && data.uid.size() > 0 &&
              data.email is string && isValidEmail(data.email) &&
-             data.fullName is string && data.fullName.size() < 100 &&
-             data.employeeNumber is string && data.employeeNumber.size() < 20 &&
+             data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
+             data.employeeNumber is string && data.employeeNumber.size() > 0 &&
              data.position in ['Teacher 1', 'Teacher 2', 'Teacher 3', 'Teacher 4', 'Teacher 5', 'Teacher 6', 'Teacher 7', 'Master Teacher I', 'School Principal I', 'Administrative Officer II', 'Admin Aide'] &&
+             data.isAdviser is bool &&
+             data.assignedClasses is list &&
+             data.assignedSubjects is map &&
              data.role in ['admin', 'teacher'];
     }
 
     function isValidAssessment(data) {
-      return data.keys().hasAll(['studentId', 'type', 'period', 'score', 'grade', 'section', 'teacherId']) &&
-             data.studentId is string && data.studentId.size() < 50 &&
+      return data.studentId is string && data.studentId.size() > 0 &&
              data.type in ['CRLA', 'Phil-IRI', 'RMA', 'ELAK'] &&
              data.period in ['BOSY', 'MOSY', 'EOSY'] &&
              data.score is number &&
              data.grade is string &&
              data.section is string &&
-             data.teacherId is string;
+             data.teacherId is string && data.teacherId == request.auth.uid &&
+             isValidDateString(data.timestamp);
     }
 
     function isValidAcademicRecord(data) {
-      return data.keys().hasAll(['studentId', 'term', 'subject', 'gradeValue', 'grade', 'section', 'teacherId']) &&
-             data.studentId is string && data.studentId.size() < 50 &&
+      return data.studentId is string && data.studentId.size() > 0 &&
              data.term in ['Term 1', 'Term 2', 'Term 3'] &&
              data.subject is string &&
              data.gradeValue is number &&
+             data.masteredSkills is list &&
+             data.leastMasteredSkills is list &&
              data.grade is string &&
              data.section is string &&
-             data.teacherId is string;
+             data.teacherId is string && data.teacherId == request.auth.uid &&
+             isValidDateString(data.timestamp);
     }
 
     // ===============================================================
@@ -106,27 +122,40 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
-                    (isOwner(userId) || isAdmin());
-      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
-                    (isOwner(userId) || isAdmin()) &&
-                    (request.resource.data.role == resource.data.role || isAdmin());
+      allow read: if isOwner(userId) || isAdmin();
+      
+      allow create: if isOwner(userId) && 
+                      isValidUser(request.resource.data) && 
+                      (request.resource.data.role == 'teacher' || isAdmin());
+                      
+      allow update: if (isOwner(userId) && 
+                       isValidUser(request.resource.data) && 
+                       request.resource.data.role == resource.data.role) || 
+                      isAdmin();
     }
 
     match /assessments/{assessmentId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated(); // Teachers can see all anonymized data for comparison? 
+                                       // Or restrict to own data? Let's allow read for all authenticated staff.
+      
       allow create: if isAuthenticated() && isValidAssessment(request.resource.data);
-      allow update: if isAuthenticated() && isValidAssessment(request.resource.data) && 
-                    (request.resource.data.teacherId == request.auth.uid || isAdmin());
+      
+      allow update: if isAuthenticated() && 
+                      (resource.data.teacherId == request.auth.uid || isAdmin()) &&
+                      isValidAssessment(request.resource.data);
+                      
       allow delete: if isAuthenticated() && (resource.data.teacherId == request.auth.uid || isAdmin());
     }
 
     match /academic_records/{recordId} {
       allow read: if isAuthenticated();
+      
       allow create: if isAuthenticated() && isValidAcademicRecord(request.resource.data);
-      allow update: if isAuthenticated() && isValidAcademicRecord(request.resource.data) && 
-                    (request.resource.data.teacherId == request.auth.uid || isAdmin());
+      
+      allow update: if isAuthenticated() && 
+                      (resource.data.teacherId == request.auth.uid || isAdmin()) &&
+                      isValidAcademicRecord(request.resource.data);
+                      
       allow delete: if isAuthenticated() && (resource.data.teacherId == request.auth.uid || isAdmin());
     }
   }

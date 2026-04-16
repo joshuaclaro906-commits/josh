@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { User, AcademicData, AcademicTerm } from '../types';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { parseExcel, processAcademicExcel } from '../lib/excel';
 import { useDropzone } from 'react-dropzone';
@@ -27,8 +27,9 @@ export default function AcademicModule({ user }: AcademicModuleProps) {
   useEffect(() => {
     if (!selectedClass) return;
 
+    const path = 'academic_records';
     const q = query(
-      collection(db, 'academic_records'),
+      collection(db, path),
       where('grade', '==', selectedClass),
       orderBy('timestamp', 'desc')
     );
@@ -37,7 +38,7 @@ export default function AcademicModule({ user }: AcademicModuleProps) {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicData));
       setRecords(data);
     }, (error) => {
-      console.error("Firestore Error:", error);
+      handleFirestoreError(error, OperationType.LIST, path);
     });
 
     return () => unsubscribe();
@@ -62,9 +63,24 @@ export default function AcademicModule({ user }: AcademicModuleProps) {
         user.uid
       );
 
+      const path = 'academic_records';
       for (const record of processedData) {
-        await addDoc(collection(db, 'academic_records'), record);
+        try {
+          await addDoc(collection(db, path), record);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.CREATE, path);
+        }
       }
+
+      // Mock Drive Upload
+      await fetch('/api/drive/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          folderPath: `${selectedClass}/${selectedSubject}/${selectedTerm}`
+        })
+      });
 
       toast.success(`Successfully uploaded ${processedData.length} records`);
     } catch (error) {

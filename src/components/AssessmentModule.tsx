@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { User, AssessmentData, AssessmentType, AssessmentPeriod } from '../types';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { parseExcel, processAssessmentExcel } from '../lib/excel';
 import { useDropzone } from 'react-dropzone';
@@ -27,8 +27,9 @@ export default function AssessmentModule({ user }: AssessmentModuleProps) {
   useEffect(() => {
     if (!selectedClass) return;
 
+    const path = 'assessments';
     const q = query(
-      collection(db, 'assessments'),
+      collection(db, path),
       where('grade', '==', selectedClass),
       orderBy('timestamp', 'desc')
     );
@@ -37,7 +38,7 @@ export default function AssessmentModule({ user }: AssessmentModuleProps) {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssessmentData));
       setAssessments(data);
     }, (error) => {
-      console.error("Firestore Error:", error);
+      handleFirestoreError(error, OperationType.LIST, path);
     });
 
     return () => unsubscribe();
@@ -77,9 +78,24 @@ export default function AssessmentModule({ user }: AssessmentModuleProps) {
       );
 
       // Batch upload (simplified)
+      const path = 'assessments';
       for (const record of processedData) {
-        await addDoc(collection(db, 'assessments'), record);
+        try {
+          await addDoc(collection(db, path), record);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.CREATE, path);
+        }
       }
+
+      // Mock Drive Upload
+      await fetch('/api/drive/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          folderPath: `${selectedClass}/${selectedType}/${selectedPeriod}`
+        })
+      });
 
       toast.success(`Successfully uploaded ${processedData.length} records`);
     } catch (error) {

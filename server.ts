@@ -40,6 +40,18 @@ async function startServer() {
       appType: 'spa',
     });
     app.use(vite.middlewares);
+    
+    // Explicit SPA fallback for development if vite middleware doesn't catch it
+    app.get('*', async (req, res, next) => {
+      if (req.url.startsWith('/api')) return next();
+      try {
+        const html = await vite.transformIndexHtml(req.url, 'index.html');
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));

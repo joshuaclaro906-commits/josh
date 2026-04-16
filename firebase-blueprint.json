@@ -9,7 +9,7 @@
         "email": { "type": "string", "format": "email" },
         "fullName": { "type": "string" },
         "employeeNumber": { "type": "string" },
-        "position": { "type": "string", "enum": ["Teacher", "Master Teacher I", "School Principal I", "Administrative Officer II", "Admin Aide"] },
+        "position": { "type": "string", "enum": ["Teacher 1", "Teacher 2", "Teacher 3", "Teacher 4", "Teacher 5", "Teacher 6", "Teacher 7", "Master Teacher I", "School Principal I", "Administrative Officer II", "Admin Aide"] },
         "isAdviser": { "type": "boolean" },
         "advisoryClass": { "type": "string" },
         "assignedClasses": { "type": "array", "items": { "type": "string" } },

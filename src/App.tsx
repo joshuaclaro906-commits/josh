@@ -4,14 +4,13 @@
  */
 
 import { useState, useEffect } from 'react';
-import { auth, db } from './lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from './lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { User } from './types';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import { Toaster } from '@/components/ui/sonner';
-import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -20,23 +19,17 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("Auth State Changed:", firebaseUser ? `User: ${firebaseUser.email}` : "No User");
       if (firebaseUser) {
+        const path = `users/${firebaseUser.uid}`;
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             setUser(userDoc.data() as User);
           } else {
-            // Handle case where user exists in Auth but not in Firestore
             console.warn("User document not found in Firestore");
-            // We stay on Auth screen but we should probably sign out or show an error
-            // For now, let's just ensure loading is false so Auth component shows
-            setUser(null);
           }
         } catch (error) {
-          console.error("Error fetching user profile:", error);
-          const message = error instanceof Error ? error.message : "Failed to load user profile";
-          toast.error(message);
+          handleFirestoreError(error, OperationType.GET, path);
         }
       } else {
         setUser(null);

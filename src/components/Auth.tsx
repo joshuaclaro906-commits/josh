@@ -1,7 +1,7 @@
 
 import * as React from 'react';
 import { useState } from 'react';
-import { auth, db } from '../lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { User, UserPosition } from '../types';
@@ -44,17 +44,14 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Starting Auth Process:", isLogin ? "Login" : "Register", email);
     setLoading(true);
 
     try {
       if (isLogin) {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        // Profile fetching is handled in App.tsx via onAuthStateChanged
+        await signInWithEmailAndPassword(auth, email, password);
         toast.success("Welcome back!");
       } else {
         // Signup logic
-        // Password is generated from Employee Number if not provided
         const finalPassword = password || employeeNumber;
         if (!finalPassword) {
           toast.error("Employee Number is required to generate password");
@@ -78,22 +75,22 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
           role: (position === 'School Principal I' || position === 'Master Teacher I') ? 'admin' : 'teacher',
         };
 
-        // Special Kinder Rule
         if (selectedGrade === 'Kinder') {
           userData.advisoryClass = 'Kinder (Lily & Lotus)';
           userData.assignedClasses = ['Kinder-Lily', 'Kinder-Lotus'];
         }
 
-        await setDoc(doc(db, 'users', firebaseUser.uid), userData);
-        onAuthSuccess(userData);
-        toast.success("Account created successfully!");
+        const path = `users/${firebaseUser.uid}`;
+        try {
+          await setDoc(doc(db, 'users', firebaseUser.uid), userData);
+          onAuthSuccess(userData);
+          toast.success("Account created successfully!");
+        } catch (error) {
+          handleFirestoreError(error, OperationType.WRITE, path);
+        }
       }
     } catch (error: any) {
-      console.error("Auth Error Details:", {
-        code: error.code,
-        message: error.message,
-        stack: error.stack
-      });
+      console.error(error);
       toast.error(error.message || "Authentication failed");
     } finally {
       setLoading(false);
@@ -179,7 +176,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Position</Label>
+                    <Label htmlFor="position" className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Position</Label>
                     <Select value={position} onValueChange={(v) => setPosition(v as UserPosition)}>
                       <SelectTrigger className="h-10 border-slate-200">
                         <SelectValue placeholder="Select position" />
@@ -200,7 +197,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Primary Class Assignment</Label>
+                    <Label htmlFor="grade" className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Primary Class Assignment</Label>
                     <Select value={selectedGrade} onValueChange={setSelectedGrade}>
                       <SelectTrigger className="h-10 border-slate-200">
                         <SelectValue placeholder="Select Grade" />
