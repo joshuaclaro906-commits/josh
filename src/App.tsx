@@ -11,6 +11,7 @@ import { User } from './types';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import { Toaster } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("Auth State Changed:", firebaseUser ? `User: ${firebaseUser.email}` : "No User");
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
@@ -33,6 +35,8 @@ export default function App() {
           }
         } catch (error) {
           console.error("Error fetching user profile:", error);
+          const message = error instanceof Error ? error.message : "Failed to load user profile";
+          toast.error(message);
         }
       } else {
         setUser(null);

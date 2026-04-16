@@ -44,6 +44,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Starting Auth Process:", isLogin ? "Login" : "Register", email);
     setLoading(true);
 
     try {
