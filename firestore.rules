@@ -75,7 +75,7 @@ service cloud.firestore {
              data.email is string && isValidEmail(data.email) &&
              data.fullName is string && data.fullName.size() < 100 &&
              data.employeeNumber is string && data.employeeNumber.size() < 20 &&
-             data.position in ['Teacher', 'Master Teacher I', 'School Principal I', 'Administrative Officer II', 'Admin Aide'] &&
+             data.position in ['Teacher 1', 'Teacher 2', 'Teacher 3', 'Teacher 4', 'Teacher 5', 'Teacher 6', 'Teacher 7', 'Master Teacher I', 'School Principal I', 'Administrative Officer II', 'Admin Aide'] &&
              data.role in ['admin', 'teacher'];
     }
 
