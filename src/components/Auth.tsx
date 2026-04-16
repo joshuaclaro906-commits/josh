@@ -179,7 +179,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="position" className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Position</Label>
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Position</Label>
                     <Select value={position} onValueChange={(v) => setPosition(v as UserPosition)}>
                       <SelectTrigger className="h-10 border-slate-200">
                         <SelectValue placeholder="Select position" />
@@ -200,7 +200,7 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="grade" className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Primary Class Assignment</Label>
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Primary Class Assignment</Label>
                     <Select value={selectedGrade} onValueChange={setSelectedGrade}>
                       <SelectTrigger className="h-10 border-slate-200">
                         <SelectValue placeholder="Select Grade" />
