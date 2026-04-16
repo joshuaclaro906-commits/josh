@@ -26,8 +26,10 @@ export default function App() {
             setUser(userDoc.data() as User);
           } else {
             // Handle case where user exists in Auth but not in Firestore
-            // This might happen during signup
             console.warn("User document not found in Firestore");
+            // We stay on Auth screen but we should probably sign out or show an error
+            // For now, let's just ensure loading is false so Auth component shows
+            setUser(null);
           }
         } catch (error) {
           console.error("Error fetching user profile:", error);

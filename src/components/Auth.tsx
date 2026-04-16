@@ -88,7 +88,11 @@ export default function Auth({ onAuthSuccess }: AuthProps) {
         toast.success("Account created successfully!");
       }
     } catch (error: any) {
-      console.error(error);
+      console.error("Auth Error Details:", {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
       toast.error(error.message || "Authentication failed");
     } finally {
       setLoading(false);
