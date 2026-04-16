@@ -66,16 +66,6 @@ export default function AcademicModule({ user }: AcademicModuleProps) {
         await addDoc(collection(db, 'academic_records'), record);
       }
 
-      // Mock Drive Upload
-      await fetch('/api/drive/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file.name,
-          folderPath: `${selectedClass}/${selectedSubject}/${selectedTerm}`
-        })
-      });
-
       toast.success(`Successfully uploaded ${processedData.length} records`);
     } catch (error) {
       console.error(error);

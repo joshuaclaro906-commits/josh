@@ -81,16 +81,6 @@ export default function AssessmentModule({ user }: AssessmentModuleProps) {
         await addDoc(collection(db, 'assessments'), record);
       }
 
-      // Mock Drive Upload
-      await fetch('/api/drive/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file.name,
-          folderPath: `${selectedClass}/${selectedType}/${selectedPeriod}`
-        })
-      });
-
       toast.success(`Successfully uploaded ${processedData.length} records`);
     } catch (error) {
       console.error(error);
